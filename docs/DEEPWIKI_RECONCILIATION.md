@@ -11,7 +11,7 @@ Purpose: this file is the line-cited source of truth that `.devin/wiki.json` poi
 - The findings below were produced by static reading of the source, independently of DeepWiki. Regenerate the wiki (ideally at High effort, set at `https://app.devin.ai/settings/deepwiki#wiki-effort-level`) after this file and `.devin/wiki.json` are merged.
 - Everything below comes from reading every file in the repo (`README.md`, `.gitattributes`, `.zigi/dsn`, `.zigi/PDS`, `cbt2git.log`, all 24 `PDS/` members) and comparing it line-by-line with the wiki text.
 - Verification is **static reading only**. Nothing was assembled or executed; there is no HLASM/MVS environment here. Statements about runtime behaviour are what the source *says* it does, not what was observed.
-- Line citations are `MEMBER:start-end` into `PDS/<MEMBER>` at commit `26ad1cb`. Members are 80-column card images; columns 73–80 carry change flags (`WFB`, `SL`, `JUL`, `GTEL`, …), not sequence numbers.
+- Line citations are `MEMBER:start-end` into `PDS/<MEMBER>` at commit `26ad1cb`; the `PDS/` members are unchanged since the repository was created. If a member is ever refreshed from cbttape.org, re-verify that member's line numbers here and in `.devin/wiki.json` before regenerating. Members are 80-column card images; columns 73–80 carry change flags (`WFB`, `SL`, `JUL`, `GTEL`, …), not sequence numbers.
 - Labels used: **CONFIRMED** (wiki matches source), **CORRECT** (wiki is wrong), **QUALIFY** (wiki is true but over-generalised or missing a caveat), **ADD** (source fact absent from the wiki), **INFERENCE** (reviewer's reading, not stated literally in the source).
 
 ---
@@ -80,8 +80,9 @@ Wiki verdicts:
 ## 4. `VTAMCHK` (813 lines)
 
 - **CONFIRMED:** started by `COMMNDxx`; `PARM='DELAY=xx,COL=xx'`; `;DELAY=`, `;COL=`, `;;` escape (`VTAMCHK:3-39`).
-- **ADD:** VTAM-up check is an `OPEN` of `ACB AM=VTAM,APPLID=APPLID` where `APPLID DC AL1(8),CL8'VTAMCHK'` (`:783`, `:805`) — **the installation must define a VTAM APPL named `VTAMCHK`**. Retries 36 × 5 s = 3 min (`:571`, `ACBWAIT DC A(100*5)` `:787`); error codes 92/90/20/82/88/188 are retried, anything else → `VTAMCHK21I` + `ABEND 200` (`:582-602`).
-- **ADD:** return codes: `12` for SYSIN open failure / RECFM not F or FB / LRECL > 140 (`:552-565`, messages `VTAMCHK01I/03I/04I`); `8` for invalid `DELAY=`/`COL=` (`:673-706`, `VTAMCHK02I`); `4` when a command is skipped because its length exceeds 130 (`:647-648`, `VTAMCHK05I`). Commands are issued with `SVC 34` (`:728`), which requires the task to be authorized/key-0 capable (INFERENCE; standard for SVC 34 command issue from a problem program).
+- **ADD:** VTAM-up check is an `OPEN` of `ACB AM=VTAM,APPLID=APPLID` where `APPLID DC AL1(8),CL8'VTAMCHK'` (`:783`, `:805`) — **the installation must define a VTAM APPL named `VTAMCHK`**. Wait between attempts is `ACBWAIT DC A(100*5)` = 5 s (`:787`, `STIMER WAIT,BINTVL=ACBWAIT` `:607`). Retryable ACB error codes are 92, 90, 20, 82, 88, 188 (`:582-593`); any other code → `VTAMCHK21I` + `ABEND 200` (`:594-602`); OPEN RC > 8 → `VTAMCHK20I` + `ABEND 100,DUMP` (`:576-579`).
+- **CORRECT (retry window):** the comment `LA R4,36  36 X ACBWAIT (5 SEC) = 3 MIN TOTAL` (`:571`) states the intent, but the code does not implement it. The only counter test is `BCT R5,A00190` (`:604`), reached only for error 90 (APPLID inactive); `R5` is never initialised on that path and `R4` is never decremented or tested. Errors 92/20/82/88/188 branch straight to the wait (`A00190`) and retry every 5 s indefinitely; error 90 exhausts whatever `R5` happens to hold. Do **not** publish a guaranteed 3-minute window — describe it as "intended 36 × 5 s, not implemented (R4/R5 counter defect)".
+- **ADD:** return codes: `12` for SYSIN open failure / RECFM not F or FB / LRECL > 140 (`:552-565`, messages `VTAMCHK01I/03I/04I`); `8` for invalid `DELAY=`/`COL=` (`:673-706`, `VTAMCHK02I`); `4` when a command is skipped because its length exceeds 130 (`:647-648`, `VTAMCHK05I`). Commands are issued with `SVC 34` (`:728`) under `MODESET KEY=ZERO` (`:535`) / `MODESET KEY=NZERO` (`:743`), so VTAMCHK must run APF-authorized.
 - **QUALIFY:** the wiki's "Assembly and Macro Framework" section attributes a `BEGIN` housekeeping macro with reentrant `GETMAIN` (`VTAMCHK:43-188`). The macro is defined in-line in the member; it is not an IBM macro and other members (`ROOM`, `OPCON`) do not use it. Say "local in-member macro".
 
 ---
@@ -102,7 +103,7 @@ Wiki verdicts:
 ## 6. `INMXZ01` / `INMXZ02` (257 / 274 lines)
 
 - **CONFIRMED:** `INMXZ01` validates local TSO recipients against ACF2 and drops invalid ones, always RC 0; `INMXZ02` writes the `$HASP549`-style delivery notice via `SVC 34` under `MODESET KEY=ZERO … KEY=NZERO`, always RC 0.
-- **ADD:** `INMXZ01` header requires link-edit `INCLUDE` of `ACF$GCVT` (aka `$ACFGCVT`, from `SYS3.ACF2.V###.ACFMOD`) and **PTF `UZ39974`** (or equivalent) (`INMXZ01:19-23`, `:48`) and documents attributes APF / key 8 / problem state / reentrant. Both exits exist to compensate for TSO/E TRANSMIT behaviour of that era; on current z/OS the exit interfaces still exist but the ACF2 macro dependencies remain installation-specific.
+- **ADD:** `INMXZ01` header requires link-edit `INCLUDE` of `ACF$GCVT` (aka `$ACFGCVT`, from `SYS3.ACF2.V###.ACFMOD`) and **PTF `UZ39974`** (or equivalent) (`INMXZ01:19-23`, `:48`) and documents attributes `KEY 8, PROBLEM STATE, APF ON, REENTRANT` (`:40`). `INMXZ01` contains no `MODESET`; only `INMXZ02` does the `KEY=ZERO`/`KEY=NZERO` transition (`INMXZ02:160`, `:164`). Both exits exist to compensate for TSO/E TRANSMIT behaviour of that era; on current z/OS the exit interfaces still exist but the ACF2 macro dependencies remain installation-specific.
 
 ---
 
@@ -160,9 +161,9 @@ Wiki verdicts:
 | `PRINTOLD` | Assembler H or HLASM | needs IBM `IKJEFLPA/B` at link | — | fails on TSO/E levels without those modules |
 | `PROF$ZAP` | — (`AMASPZAP`) | — | — | target `SYS1.W$$.LINKLIB(PRINTOFF)` with `IKJEFLPB` CSECT |
 | `DARTH` | Assembler H | none | started task; ENQ + `QEDIT` | `SYS3.DARCNTRL`, tape unit names, `DARDMPxy` DDs |
-| `VTAMCHK` | Assembler H | VTAM `ACB`/`SHOWCB` macros | SVC 34 issuer | VTAM `APPL VTAMCHK`, `SYS3.PARMLIB(member)` |
+| `VTAMCHK` | Assembler H | VTAM `ACB`/`SHOWCB` macros | `MODESET KEY=ZERO` (`:535`) around SVC 34 → APF | VTAM `APPL VTAMCHK`, `SYS3.PARMLIB(member)` |
 | `IEFUTL` | Assembler H | ACF2 `ACFGACVT`, `ACFGUCB`, `LIDREC`; `TSOIDLE` LID field | SMF exit (key 0) | ACF2 installed; site job-class rules |
-| `INMXZ01` | Assembler H | ACF2 `ACF$GCVT`; PTF `UZ39974` | APF, key 8, reentrant | ACF2 |
+| `INMXZ01` | Assembler H | ACF2 `ACF$GCVT`; PTF `UZ39974` | APF ON, key 8, problem state (header `:40`; no `MODESET`) | ACF2 |
 | `INMXZ02` | Assembler H | JES2 `$HASP549` text | `MODESET KEY=ZERO` | JES2 |
 | `JESMAXCC` | JES2 `$` macros | `JCTUSER1` use | JES2 exits 016 and 252/008 | `EXIT(252)` definition in JES2PARM |
 | `JESLOGON` | Assembler H | SSIB/SSOB/JSCB mappings | `MODESET MODE=SUP` → APF | logon proc `PGM=JESLOGON`, no SYSOUT DDs |
@@ -200,7 +201,7 @@ Wiki verdicts:
 3. Build page: replace the `MVSVARS` prerequisite with an informational note; add the `PRINTOF$` vs `PRINTOFX` link-card comparison and the `AC(1)` / HLASM observations; scope `PROF$ZAP` correctly.
 4. PRINTOFF page: add the three-version table (§2.1), CSECT list, HELP-skip mechanism, `NOTE` dependency on `DD()`.
 5. DARTH page: add ABEND/ENQ/retry behaviour and control-record layout; mark future requirements as unimplemented; note both name expansions and the `DARCNVRT`/`DARCONVRT` spelling.
-6. VTAMCHK page: add the `APPL VTAMCHK` requirement, 3-minute retry window, and return-code table.
+6. VTAMCHK page: add the `APPL VTAMCHK` requirement, the intended-but-defective 36 × 5 s retry counter, the `MODESET KEY=ZERO` / APF requirement, and the return-code table.
 7. JESMAXCC page: rewrite around the exit-252 → `JCTUSER1` → exit-016 flow.
 8. New/expanded pages: `JESLOGON` restrictions, `ROOM`/`OPCON` authorization requirements, `VTOCLIST` CSECT map, `INMXZ01` PTF dependency.
 9. Add the dependency table (§13) and the historical caveat paragraph (§14).
