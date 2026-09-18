@@ -1,0 +1,173 @@
+{
+  "repo_notes": [
+    {
+      "author": "Devin (source reconciliation, commit 26ad1cb)",
+      "content": "CBT325 is CBT Tape File 325: Wells Fargo Bank MVS/XA 2.1.5 assembler programs, TSO commands, JES2 exits, SMF exits, CLISTs and ISPF parts, current as of September 1986 ($CONTENT:1-3), plus 2013 additions from Sam Golob around the PRINTOFF Y2K fix. It was converted from FILE325.XMI with cbt2git (cbt2git.log). All source lives in PDS/ as 80-column card images; members are NOT sequence-numbered - columns 73-80 carry change/ownership flags (WFB, SL, TP01, CN02, JUL, GTEL, FILE 325), not sequence numbers ($CONTENT:5-7). ACCURACY RULES FOR THIS WIKI: (1) every behavioural statement must cite PDS/<MEMBER>:line; (2) distinguish what a header COMMENT says from what the INSTRUCTIONS do - when they disagree, report the code and mention the comment; (3) never claim anything assembles or runs on current z/OS - nothing here has been assembled or executed, and all control-block offsets are MVS/XA 2.1.5 era; (4) label inferences as inferences; (5) keep exact member names and historical spellings (e.g. DARCNVRT vs the comment's DARCONVRT, 'ASSESMENT' in the DARTH TITLE). A line-cited reconciliation of the previous wiki against the source is committed at docs/DEEPWIKI_RECONCILIATION.md; treat it as authoritative where it and older wiki text disagree."
+    },
+    {
+      "author": "Devin (source reconciliation)",
+      "content": "INVENTORY FACTS: the repository has 24 members under PDS/ (cbt2git.log:2-25 and .zigi/PDS both list 24). PDS/$$$#DATE:8 says '23 MEMBERS COUNTED; CUMULATIVE SIZE IS 22,236 RECORDS' because it was written before MVSVARS (37 lines, stamped 13/08/14 17:35:45 in .zigi/PDS, after the 14:20:36 ship time) was added: 22,273 - 37 = 22,236. Do not say 'exactly 23 members'. Dataset attributes: $$$#DATE:6-7 'FB 80 5600 PO' describes SBGOLOB.CBT487.FILE325 as shipped in 2013; .zigi/dsn 'PDS P0 FB 80 32720' describes the zigi-managed target PDS - two different datasets. CBT tape version: member contents are from the V487 build (SETSSI CB487325 in PRINTOF$:26 and PRINTOFX:2912), but the Git snapshot was unpacked from CBT.V505.FILE325.PDS (cbt2git.log:1). README.md:10-11 refers to a member $$DOC that does not exist in the repo. .zigi/PDS last-column labels encode provenance: FILE325 = 1987 originals, CBT-487 = $$$#DATE and @FILE325, SBGOLOB = $PRINTOF and MVSVARS, ASMJCL = PRINTOF$, UPDATED = PRINTOFF, NEW-Y2K = PRINTOFX, OLDVERS = PRINTOLD, ZAPLMOD = PROF$ZAP. $CONTENT (1987) describes only the original Wells Fargo items and does not mention $PRINTOF, PRINTOFX, PRINTOF$, PROF$ZAP, MVSVARS, PRINTOLD or @FILE325. MVSVARS is a saved 2007 mailing-list email containing a 3-line REXX (say mvsvar(var)) and a small VARS.SH exporting SYSNAME/SYSCLONE/SYSPLEX; nothing in the repository references it and no build uses it - it is NOT a build prerequisite or installation-wide configuration."
+    },
+    {
+      "author": "Devin (source reconciliation)",
+      "content": "SITE DEPENDENCIES TO CALL OUT EXPLICITLY: ACF2 macros ACFGACVT/ACFGUCB and the LIDREC DSECT with the installation LID field TSOIDLE (IEFUTL); ACF$GCVT link-edit INCLUDE and PTF UZ39974 (INMXZ01:19-23,48); JES2 $ macros and the JCTUSER1 field plus an EXIT(252) JES2PARM definition (JESMAXCC); a VTAM APPL named VTAMCHK (VTAMCHK:783,805); SYS3.DARCNTRL and DARDMPxy DDs (DARTH:748, :25-32); PROFS node EMINFO, NAMES.TEXT and SYSOUT class B (NOTE); CONASID EQU 7 and the 3-character password VIPWORD (OPCON). Members that need APF/authorized placement: OPCON (OPCON:75-77, IKJEFTE2/IKJEFTE8), ROOM (MODESET KEY=ZERO, ROOM:343-345), JESLOGON (MODESET MODE=SUP / EXTKEY=ZERO), INMXZ01/INMXZ02 (MODESET KEY=ZERO), IEFUTL (SMF exit). Dataset names such as SYS1.W$$.LINKLIB, SBGOLOB.LOAD, SBGOLOB.B.ASM and SYS3.* are test or Wells Fargo names that an installer must change (PRINTOFX:31 is marked '<=== CHANGE')."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview and Member Inventory",
+      "purpose": "High-level description of CBT File 325 (Wells Fargo MVS/XA 2.1.5 contributions, September 1986, plus 2013 PRINTOFF Y2K additions), with a complete table of all 24 PDS/ members: member name, what it is (assembler program / JES2 exit / SMF exit / CLIST / panel / JCL / documentation), line count, and the .zigi/PDS provenance label. Explain the 23-vs-24 member discrepancy and the missing $$DOC reference.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "List every member: $$$#DATE, $CONTENT, $PRINTOF, @FILE325, DARTH, IEFUTL, INMXZ01, INMXZ02, JESLOGON, JESMAXCC, MVSVARS, NOTE, NOTEHELP, NOTEIMAC, OPCON, PRINTOF$, PRINTOFF, PRINTOFX, PRINTOLD, PROF$ZAP, ROOM, VTAMCHK, VTOCLIST, WFBNOTE. PRINTOFX is not a separate tool: it is a JCL job that builds an alternative PRINTOFF load module (NAME PROFF(R), ALIAS PO,PRINTO,PRINTOFF). PRINTOLD is the unfixed 1986 PRINTOFF source. DARTH has two expansions: 'Dump Activity Reporter / Tape Handler' ($CONTENT:12, @FILE325:10) and 'DAMAGE ASSESMENT ROUTINE TAPE HANDLER' (sic, DARTH:115 TITLE). Only PRINTOFF was touched for z/OS (@FILE325:8); everything else is as of September 1986."
+        }
+      ]
+    },
+    {
+      "title": "Packaging, Provenance and Encoding",
+      "purpose": "Document how the repository was produced (cbt2git from FILE325.XMI, CBT.V505.FILE325.PDS), the $$$#DATE shipping manifest (V487, SBGOLOB.CBT487.FILE325, FB 80 5600 PO, 23 members / 22,236 records), the .zigi/dsn and .zigi/PDS metadata (FB 80 32720; per-member dates, sizes and provenance labels), .gitattributes encoding rules (iso8859-1 in Git, ibm-1047 z/OS working tree, exceptions for .gitattributes/.gitignore, binary doc types), and the card-image format (unnumbered, columns 73-80 = change flags).",
+      "parent": "Overview and Member Inventory",
+      "page_notes": [
+        {
+          "content": "Keep the three measurements separate: original shipped PDS (FB 80 5600, V487, 2013-08-14), zigi target PDS (FB 80 32720), and the V505 XMI extracted 2025-04-15. Do not describe columns 73-80 as sequence numbers or member identifiers."
+        }
+      ]
+    },
+    {
+      "title": "Build, Link-Edit and Installation Dependencies",
+      "purpose": "One table per member: assembler assumed (Assembler H vs HLASM/ASMA90), non-IBM or site macros and DSECTs required in SYSLIB, authorization needed (APF, key 0, MODESET, SVC 34 issuer, JES2 exit), and other site dependencies (dataset names, VTAM APPL, PROFS node, JES2PARM exits). Include the PRINTOF$ vs PRINTOFX link-edit card comparison and a historical-vs-current-system caveat paragraph.",
+      "parent": "Overview and Member Inventory",
+      "page_notes": [
+        {
+          "content": "PRINTOF$:1-29 assembles with ASMA90 (SYSLIB SYS1.MACLIB, SYS1.MODGEN, SBGOLOB.B.ASM) and links with HEWL PARM='NCAL,MAP,LIST,LET', SETSSI CB487325, ALIAS PRINTO,PROFF,PO, NAME PRINTOFF(R), no SETCODE. PRINTOFX:13-14 uses PARM=(DECK,NOOBJECT,NORLD,RENT,TERM,'XREF(SHORT)',FLAG(5)); its binder cards (PRINTOFX:2909-2917) are INCLUDE SYSLIBX / ORDER PRINTOFF,PARMTAB,MESSAGES,VALDEST,IKJEFLPA,IKJEFLPB / SETSSI CB487325 / MODE RMODE(24),AMODE(24) / SETCODE AC(1) / ENTRY PRINTOFF / ALIAS PO,PRINTO,PRINTOFF / NAME PROFF(R). Neither PRINTOFF nor PRINTOLD source uses MODESET/TESTAUTH, so AC(1) is an installation choice (inference). JULSUB's SAVE label JULSUB_&SYSDATE._&SYSTIME (PRINTOFF:2828) uses an underscore, so PRINTOFF as shipped assumes HLASM."
+        },
+        {
+          "content": "Remove any statement that MVSVARS must be configured before building; it is an informational email. PROF$ZAP (NAME PRINTOFF IKJEFLPB / VER 0000 19 / REP 0000 20) only changes the century byte and only applies to a load module that still contains IBM's IKJEFLPB CSECT; it does not address the incompatibility with IBM's later IKJEFLPA/B described in $PRINTOF:59-66. The zap and the JULSUB-based PRINTOFF are alternatives, not layers."
+        },
+        {
+          "content": "Historical caveat: all 1987-stamped members target MVS/XA 2.1.5, JES2 of that era, ACF2, VTAM and ISPF/PDF. Control-block offsets used by OPCON (console ASID, fetch-protected console buffers), IEFUTL (TSB/ACF2 fields) and JESMAXCC (JCT/SCT via $ macros) are release-specific. Nothing in this repository has been assembled or executed as part of documenting it."
+        }
+      ]
+    },
+    {
+      "title": "PRINTOFF Family and the Y2K Fixes",
+      "purpose": "Document PRINTOFF (preferred, JULSUB-based Y2K fix), PRINTOFX (first fix: JCL job embedding disassembled IKJEFLPA/IKJEFLPB with the century byte set to X'20'), PRINTOLD (original 1986 source calling IKJEFLPA), PRINTOF$ (assemble/link JCL), PROF$ZAP (AMASPZAP century-byte zap) and $PRINTOF (Sam Golob's narrative). Cover the CSECT map, the parse table, the DD() keyword, the in-source HELP text skipped at assembly, and the relationship to IBM PRINTDS.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "$PRINTOF:11-12 'Member PRINTOFF represents the second fix. (Use this one.) Member PRINTOFX represents the first fix.' $PRINTOF:59-66: IBM UPDATED IKJEFLPA/IKJEFLPB and the new versions are 'not compatible with this program's CALL', so the 1986 source 'is not reassemblable on current systems' - do not say the modules were removed. PRINTOFF:725-730 sets JS1=0, JS2=1, JS4=A(16+512) and CALLs JULSUB,(JS1,JS2,JS3,JS4,JS5),VL,MF=(E,CALLMFJ); JULSUB CSECT (AMODE 24, RMODE 24) starts at PRINTOFF:2825-2827. PRINTOFX:754 and PRINTOLD:696 still CALL IKJEFLPA,(HDRTIME,HDRDATE). PRINTOFX embeds IKJEFLPA CSECT at :2763 and IKJEFLPB CSECT at :2882."
+        },
+        {
+          "content": "PRINTOFF CSECTs: PRINTOFF (:200), MESSAGES (:2245), VALDEST (:2394), JULSUB (:2827); PARMTAB IKJPARM at :2072; RECDATA DS CL32760 at :2616. HELP text is bracketed by AGO .ENDHELP (:2619) and .ENDHELP ANOP (:2744), so it is carried in the source but skipped at assembly and must be installed separately as a TSO HELP member. Line counts: PRINTOFF 3,354; PRINTOFX 2,917; PRINTOLD 2,704."
+        },
+        {
+          "content": "NOTE depends on this file's modified PRINTOFF: NOTE:450 and :467 issue PRINTOFF * DD(PDFTEMP&SCREEN) DEST(...) CLASS(B) NOHEADING NOMSG. The DD() operand lines (PRINTOFF:2141, :2230) carry the WFB change flag; that stock IPO PRINTOFF lacked DD() is an inference from those flags."
+        }
+      ]
+    },
+    {
+      "title": "DARTH - Dump Offload to Tape",
+      "purpose": "Document DARTH (PDS/DARTH, 1,278 lines): purpose (offload SYS1.DUMP datasets to tape), operation as a started task or batch job, the 15-minute STIMER/WAIT loop and F DARTH,X modify, the DARDMPxy DDNAME convention, the SDDDHHMM control-member naming and two-record layout in SYS3.DARCNTRL, the CSECTs UTDARTH/DARBLDCB/DARCNVRT/DARGETDD, error handling (user ABENDs 004/008/016, ABEND 600/605/610/670/620, DEATHSTAR ENQ, DYNALLOC X'0210' retry), and the explicit list of unimplemented future requirements.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "Implemented vs future: DARTH:52-57 'AT PRESENT, OLD MEMBERS MUST BE MANUALLY PURGED FROM THE PDS'. DARTH:95-112 'SOME FUTURE REQUIREMENTS CURRENTLY UNDER CONSIDERATION' lists F DARTH,SUSPEND, F DARTH,RESUME, automatic purge and reading the JCL PARM field - none of these are implemented; do not list them as features."
+        },
+        {
+          "content": "Sleep interval DC C'00150000' (:683); STIMER REAL,ASYNXIT,DINTVL=TIMELIMT and WAIT 1,ECBLIST=TWOECBS,LONG=YES (:305-306); started at WFB as S DARTH.VADER (:3). All four CSECTs are in the same member: UTDARTH (:114), DARBLDCB CSECT (:894), DARCNVRT CSECT (:976), DARGETDD START (:1062); the comment at :121 spells it DARCONVRT while the CSECT and the INCLUDE card (:134) use DARCNVRT. Sample link JCL :127-139 assumes separately assembled object modules. Dump record 1 must start X'FE' (XA dump header) or DARTH falls back to the current TOD (:58-61). ENQ on 'DEATHSTAR' (:219-222) prevents two copies. DYNALLOC error X'0210' -> wait 2 minutes and retry (:596-616, :631-637). Control records (:65-70) use a two-digit year (yy.ddd)."
+        }
+      ]
+    },
+    {
+      "title": "VTAMCHK - VTAM Availability Command Issuer",
+      "purpose": "Document VTAMCHK (PDS/VTAMCHK, 813 lines): start from COMMNDxx, PARM DELAY=/COL= and the in-stream ;DELAY= ;COL= ;; directives, the VTAM-up test (OPEN of ACB AM=VTAM,APPLID=VTAMCHK), the 36 x 5 second retry window and retried ACB error codes, SYSIN validation (RECFM F/FB, LRECL <= 140), command issue via SVC 34, all VTAMCHKnnI messages, return codes 12/8/4 and ABEND 200.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "APPLID DC AL1(8),CL8'VTAMCHK' (:805) with VTAMACB ACB AM=VTAM,APPLID=APPLID (:783): the installation must define a VTAM APPL named VTAMCHK. ACBWAIT DC A(100*5) (:787), 36 retries (:571) = about 3 minutes; ACB error codes 92/90/20/82/88/188 are retried, anything else -> VTAMCHK21I and ABEND 200 (:582-602). RC 12 for SYSIN open failure / RECFM not F or FB / LRECL > 140 (:552-565, VTAMCHK01I/03I/04I); RC 8 for invalid DELAY=/COL= (:673-706, VTAMCHK02I); RC 4 when a command longer than 130 is skipped (:647-648, VTAMCHK05I). The BEGIN housekeeping macro (:43-188) is defined in-line in this member - call it a local in-member macro, not an IBM macro."
+        }
+      ]
+    },
+    {
+      "title": "IEFUTL - SMF Time Limit Exit",
+      "purpose": "Document the Wells Fargo IEFUTL (PDS/IEFUTL, 497 lines): ACF2 privilege lookup (ACFGACVT, ACFGUCB SYS=AOS2, LIDREC, TSOIDLE), the separate CPU / batch-wait / TSO-wait extension paths with the exact instructions and counters, the 90-minute TSO JWT cap, the conditional VTAM disconnect via SVC 34 using TSBTRMID, the extension-counter reset rule, messages, and why it is not a drop-in exit.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "CPU path: LA R3,60*5 (+5 minutes) with C R1,SIX / SIX DC F'6' (:285-289, :410) for production or privileged batch; TSO sessions extended indefinitely on CPU expiry (:38-39, :56); test (Z) jobs by non-privileged users cancelled (:36-37). Batch wait path: extends by ONE SMF JWT increment (L R3,SMFWTIME, :365) up to 6 times (:358-362). The header is self-contradictory (:49-50 says '5 MINUTES UP TO 6 TIMES ... 3.5 HOURS', :68 says '30 MINUTES UP TO 6 TIMES'); neither 5 nor 30 is in the code. Publish 'JWT x up to 6' and do not state a fixed 30-minute wait extension. TSO wait path: allowed idle comes from the ACF2 LID field (TSOIDLE, SMFWORKH) capped at 90 minutes (CLI SMFWORKH,X'5A' ... LA R6,90, :331-334); each pass extends by one JWT (:383-384) or JWT + 1 minute after the disconnect SVC 34 (:385); counter reset when the time-out is not continuous (:300-307). TSOMSG1 'IEFUTL - CPU TIME EXPIRED, TSO SESSION EXTENDED' (:417). MVC SVC34LU,TSBTRMID (:241) supplies the VTAM LU name."
+        }
+      ]
+    },
+    {
+      "title": "INMXZ01 and INMXZ02 - TSO/E TRANSMIT Exits",
+      "purpose": "Document the two TRANSMIT exits (PDS/INMXZ01 257 lines, PDS/INMXZ02 274 lines): INMXZ01 validates local TSO recipients against ACF2 and drops invalid ones (always RC 0); INMXZ02 issues the $HASP549-style local delivery notification via SVC 34 under MODESET KEY=ZERO/NZERO (always RC 0). Include link-edit and PTF requirements and the stated attributes (APF, key 8, problem state, reentrant).",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "INMXZ01:19-23 and :48: must be link-edited with an INCLUDE for ACF$GCVT ($ACFGCVT in SYS3.ACF2.V###.ACFMOD) and requires PTF UZ39974 or equivalent."
+        }
+      ]
+    },
+    {
+      "title": "JESMAXCC - JES2 Exits 252 and 016 for Maximum Condition Code",
+      "purpose": "Document JESMAXCC (PDS/JESMAXCC, 440 lines) as a PAIR of JES2 SP2.1.5 exits: EXIT252 (with UEXIT252 / exit 008 handling) scans the SCT chain and stores the maximum condition code or abend code in JCTUSER1; EXIT016 consumes JCTUSER1 to append MAX COND CODE nnnn / ABENDED USER xxx / CANCELLED SYSTEM 222 to $HASP165. Describe the JCTUSER1 contract, both TITLE statements, and the JES2PARM EXIT(252) requirement.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "Do not describe JESMAXCC as an exit-016-only module. $CONTENT:63-71 calls it 'a pair of JES2 (SP2.1.5) exits'. The member contains EXIT016 TITLE 'WFB - EXIT 016 - MAX COND CODE/ABEND CODE SUPPORT' and EXIT252 TITLE 'WFB - EXIT 252 - MAX COND CODE/ABEND CODE SUPPORT'. Because it writes JCTUSER1 it conflicts with any other installation code using that field."
+        }
+      ]
+    },
+    {
+      "title": "JESLOGON - TSO Logon Through a Secondary JES2",
+      "purpose": "Document JESLOGON (PDS/JESLOGON, 319 lines): prompts for a subsystem name, builds SSIB/SSOB, issues Request Job ID, swaps JSCBSSIB, attaches IKJEFT01 (or ADFMDF03 for Session Manager), restores the original SSIB on TMP exit and propagates the TMP return code. Include the restrictions, authorization and provenance.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "Restrictions (:38-44): no SYSOUT DDs may appear in the logon proc (013 abend when the secondary subsystem accesses them); the job name seen by the secondary JES2 is SYSLOG. Uses MODESET MODE=SUP and EXTKEY=ZERO (:108-234), so it must be APF-authorized and named as the logon proc PGM=. Credited to Jim Vinson / George DeLano / Mike Shannon (IBM) (:46-49)."
+        }
+      ]
+    },
+    {
+      "title": "NOTE - ISPF/PDF Front End for PROFS Mail",
+      "purpose": "Document the NOTE facility: CLIST NOTE (PDS/NOTE, 476 lines), panel WFBNOTE, edit macro NOTEIMAC (PROFSFORMAT reformatting and X'FDFDFD' cleanup) and help NOTEHELP (%NOTE / TSO %NOTE). Cover the PROC header (PROLOG(YES) EPILOG(YES) COPYLIST(YES) PROFNODE(EMINFO), MAXNICK 15), the VIO work file, NAMES.TEXT nicknames, and delivery through PRINTOFF to a JES2 DEST that PROFS picks up.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "NOTE:27-28 ALLOC DD(PDFTEMP&SCREEN) REUSE UNIT(VIO) TRACK SPACE(1) DSORG(PS) RECFM(F B) LRECL(80) BLKSIZE(9040). NAMES.TEXT handling at :31-41 with a warning if it cannot be allocated. Delivery via PRINTOFF * DD(PDFTEMP&SCREEN) DEST(node.user) CLASS(B) NOHEADING NOMSG (:450, :467). NOTE is a PDF-edit-based front end that prints formatted text to a JES2 destination read by PROFS (VM); there is no SMTP or TRANSMIT path - do not call it generic electronic mail delivery. SYSOUT class B and node EMINFO are Wells Fargo conventions."
+        }
+      ]
+    },
+    {
+      "title": "OPCON (SPY) - TSO Operator Console Monitor",
+      "purpose": "Document OPCON (PDS/OPCON, 1,672 lines), the renamed SPY command: viewing operator console buffers and issuing any operator command from TSO, guarded by a 3-character password in VIPWORD; APF and IKJEFTE2/IKJEFTE8 authorized-command requirements; the change history; and the hard-coded console ASID.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "OPCON:75-77 'SPY MUST, ALAS, BE APF AUTHORIZED ... PLACE THE SPY COMMAND IN IKJEFTE2 AND/OR IKJEFTE8'. Password: :4, :82 (VIPWORD). Console ASID: change log :54 'SET CONASID TO 6 FOR XA (S/370 CONASID IS 5)' and :39 'V3.3.1 - CHANGE CONSOLE ASID TO 7 DUE TO CATALOG ASID W/ DFP V2'; active code CONASID EQU 7, set as secondary ASID via SSAR (:369-370, :547). State that the value is release-specific and hard-coded and that the program reads MVS/XA console control blocks in fetch-protected storage, so it is not portable. The command name inside the source and messages is still SPY; OPCON is the CBT member name ($CONTENT:91-124)."
+        }
+      ]
+    },
+    {
+      "title": "ROOM - JCT Room Number Utility",
+      "purpose": "Document ROOM (PDS/ROOM, 491 lines): lists or modifies JCTROOMN (Wells Fargo accounting overlays the room field), the MODESET KEY=ZERO / KEY=NZERO bracket around the JCT store and the resulting APF / authorized command table requirement.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "MODESET KEY=ZERO ... KEY=NZERO at ROOM:343-345."
+        }
+      ]
+    },
+    {
+      "title": "VTOCLIST - VTOC Lister",
+      "purpose": "Document VTOCLIST (PDS/VTOCLIST, 5,986 lines, the largest member): a multi-CSECT Assembler-H-era VTOC lister/reporter with CSECT map (including XVTCREAD, XDATEDIT, XPRNTSUB), in-member print macros, separate-assembly fallback instructions from the header, 3380-E support, >16-extent handling and the return-code branches.",
+      "parent": null,
+      "page_notes": [
+        {
+          "content": "Give VTOCLIST its own page; do not fold it into a generic 'dataset utilities' page with ROOM."
+        }
+      ]
+    }
+  ]
+}
